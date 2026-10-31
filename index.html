@@ -331,7 +331,11 @@ async function refrescar(){
       const d = performance.now() + Number(nuevo.restante) * 1000;
       if (deadline == null || clave(nuevo) !== clave(st) || Math.abs(d - deadline) > 400) deadline = d;
     } else deadline = null;
-    if (clave(nuevo) !== clave(st)) montado = null;
+    if (clave(nuevo) !== clave(st)){
+      montado = null;
+      // Ronda nueva (o reabierta tras un reinicio): lo que diga el servidor manda
+      const kn = clave(nuevo); if (kn){ votados.delete(kn); comprobado.delete(kn); }
+    }
     st = nuevo;
     const k = clave(st);
     if (yo && k && !votados.has(k) && !comprobado.has(k)){
