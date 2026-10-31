@@ -10,12 +10,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Special+Elite&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0d0b10;--ink:#f4ecdf;--muted:#b9ad9c;--gold:#e8b44a;--gold2:#ffd77a;--red:#b3262e;--plum:#241530;--card:#1c1622;
+  --oA:#e8b44a;--oB:#e2512b;--oC:#5b8def;--oD:#3fb27f;
   --display:'Bebas Neue',Impact,'Arial Narrow',sans-serif;--type:'Special Elite','Courier New',monospace;--sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;min-height:100%}
 body{background:radial-gradient(ellipse at 50% -20%,#3a2340 0%,var(--bg) 60%) fixed,var(--bg);color:var(--ink);font-family:var(--sans);
   padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
-button{font:inherit;cursor:pointer;border:0}
+button,input{font:inherit}
+button{cursor:pointer;border:0}
 .top{text-align:center;margin:4px 0 14px}
 .top .k{font-family:var(--type);color:var(--muted);font-size:13px;letter-spacing:2px}
 .top h1{font-family:var(--display);font-size:44px;line-height:.95;margin:2px 0 0;letter-spacing:1px;
@@ -24,48 +26,69 @@ button{font:inherit;cursor:pointer;border:0}
 .screen.on{display:block}
 .box{background:var(--card);border:1px solid #ffffff1a;border-radius:16px;padding:18px}
 .lead{font-size:18px;line-height:1.4;margin:0 0 14px;text-align:center}
+.juego{font-family:var(--type);color:var(--gold2);text-align:center;font-size:15px;letter-spacing:1px;margin-bottom:4px}
+.rlabel{font-family:var(--display);font-size:40px;color:var(--gold2);text-align:center;line-height:.95;margin:2px 0 6px}
+.preg{font-size:19px;line-height:1.35;font-weight:600;text-align:center;margin:6px 0 16px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .name{background:#2a2032;color:var(--ink);border:1px solid #ffffff22;border-radius:12px;padding:16px 8px;font-weight:600;font-size:17px;min-height:56px}
-.name:active{transform:scale(.97)}
-.name.sel{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#2b1a05;border-color:transparent}
-.badge{display:inline-block;font-family:var(--type);font-size:14px;padding:6px 12px;border-radius:999px;margin:0 auto 12px}
+.name:active,.opt:active{transform:scale(.97)}
+.opts{display:grid;gap:10px}
+.opt{display:flex;align-items:center;gap:14px;text-align:left;background:#2a2032;color:var(--ink);border:2px solid var(--c);border-radius:14px;padding:12px 14px;min-height:64px;font-weight:700;font-size:19px}
+.opt .l{flex:0 0 42px;height:42px;border-radius:10px;background:var(--c);color:#1a1008;font-family:var(--display);font-size:30px;display:flex;align-items:center;justify-content:center}
+.o0{--c:var(--oA)} .o1{--c:var(--oB)} .o2{--c:var(--oC)} .o3{--c:var(--oD)} .o4{--c:#c77dff} .o5{--c:#9aa0a6}
+.tbox{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px}
+.tbox label{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--muted);font-size:14px}
+.tbox input{width:100%;text-align:center;font-family:var(--display);font-size:46px;line-height:1;padding:10px 4px;border-radius:12px;
+  background:#2a2032;color:var(--gold2);border:1px solid #ffffff2a;-moz-appearance:textfield}
+.tbox input::-webkit-outer-spin-button,.tbox input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.tbox input:focus{outline:2px solid var(--gold);border-color:transparent}
+.badge{display:inline-block;font-family:var(--type);font-size:14px;padding:6px 12px;border-radius:999px;margin:0 auto 8px}
 .b0{background:#e8b44a22;color:var(--gold2);border:1px solid #e8b44a66}
 .b1{background:#e2512b22;color:#ff8a5b;border:1px solid #e2512b88}
-.exp{font-family:var(--display);font-size:64px;color:var(--gold2);text-align:center;line-height:.9;margin:4px 0}
 .center{text-align:center}
+.timer{display:none;align-items:center;gap:10px;margin:0 0 14px}
+.timer.on{display:flex}
+.timer .bar{flex:1;height:12px;border-radius:999px;background:#ffffff14;overflow:hidden}
+.timer .fill{height:100%;width:100%;border-radius:999px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.timer .num{font-family:var(--display);font-size:30px;min-width:2ch;text-align:right;color:var(--gold2)}
+.timer.low .fill{background:linear-gradient(90deg,#b3262e,#ff6b6b)}
+.timer.low .num{color:#ff6b6b}
 .wait{font-size:18px;color:var(--muted);text-align:center;line-height:1.5;padding:30px 10px}
 .dots::after{content:'';animation:d 1.5s steps(4) infinite}
 @keyframes d{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
 .ok{font-size:72px;text-align:center;margin:10px 0 0}
+.mine{font-family:var(--display);font-size:40px;color:var(--gold2);text-align:center;margin:4px 0 8px;line-height:1}
 .who{font-size:15px;color:var(--muted);text-align:center;margin-top:18px}
 .who button{background:none;color:var(--gold);text-decoration:underline;padding:4px}
 .btn{display:block;width:100%;border-radius:999px;padding:16px;font-weight:800;font-size:18px;margin-top:10px}
 .btn-gold{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#2b1a05}
 .btn-ghost{background:#ffffff14;color:var(--ink);border:1px solid #ffffff2a}
+.btn:disabled{opacity:.5}
 .err{color:#ff8a80;text-align:center;min-height:1.3em;margin-top:10px}
 #modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:16px;z-index:5}
 #modal.on{display:flex}
 #modal .box{max-width:420px;width:100%;text-align:center}
-#modal .big{font-family:var(--display);font-size:46px;color:var(--gold2);margin:6px 0 4px}
+#modal .big{font-family:var(--display);font-size:44px;color:var(--gold2);margin:6px 0 4px;line-height:1}
 small{color:var(--muted)}
 </style>
 </head>
 <body>
-<div class="top"><div class="k">★ CHAT LAMENTABLE ★</div><h1>El Perfil Misterioso</h1></div>
+<div class="top"><div class="k">★ CHAT LAMENTABLE ★</div><h1>Gala Lamentable</h1></div>
 
 <!-- ¿Quién eres? -->
 <section class="screen" id="s-who">
   <div class="box">
     <p class="lead">¿Quién eres?</p>
     <div class="grid" id="voters"></div>
-    <p class="center" style="margin:14px 0 0"><small>Solo se elige una vez. Tu voto irá firmado con este nombre.</small></p>
+    <p class="center" style="margin:14px 0 0"><small>Solo se elige una vez. Tus votos irán firmados con este nombre en todos los juegos.</small></p>
   </div>
 </section>
 
-<!-- Esperando -->
+<!-- Esperando / cerrada -->
 <section class="screen" id="s-wait">
   <div class="box">
-    <div class="wait" id="waitmsg">Esperando a que salga el próximo expediente<span class="dots"></span></div>
+    <div class="juego" id="waitjuego"></div>
+    <div class="wait" id="waitmsg"></div>
   </div>
   <div class="who">Votas como <b class="me"></b> · <button class="change">cambiar</button></div>
 </section>
@@ -73,11 +96,12 @@ small{color:var(--muted)}
 <!-- Votar -->
 <section class="screen" id="s-vote">
   <div class="box">
-    <div class="center"><span class="badge" id="fasebadge"></span></div>
-    <div class="center"><small>Expediente nº</small></div>
-    <div class="exp" id="expnum">00</div>
-    <p class="lead">¿De quién es este expediente?</p>
-    <div class="grid" id="cands"></div>
+    <div class="timer" id="timer"><div class="bar"><div class="fill" id="tfill"></div></div><div class="num" id="tnum"></div></div>
+    <div class="juego" id="vjuego"></div>
+    <div class="center"><span class="badge" id="badge"></span></div>
+    <div class="rlabel" id="rlabel"></div>
+    <div class="preg" id="preg"></div>
+    <div id="answers"></div>
     <div class="err" id="err"></div>
   </div>
   <div class="who">Votas como <b class="me"></b></div>
@@ -86,17 +110,30 @@ small{color:var(--muted)}
 <!-- Votado -->
 <section class="screen" id="s-done">
   <div class="box">
+    <div class="juego" id="djuego"></div>
     <div class="ok">🗳️</div>
-    <p class="lead" style="margin-top:8px">Voto registrado en el expediente nº <b id="doneexp"></b></p>
+    <p class="lead" style="margin:8px 0 4px">Voto registrado</p>
+    <div class="mine" id="mine"></div>
     <p class="center"><small>No se puede cambiar. Mira la tele y espera a la solución.</small></p>
   </div>
   <div class="who">Votas como <b class="me"></b></div>
 </section>
 
+<!-- Excluido de este juego -->
+<section class="screen" id="s-excl">
+  <div class="box">
+    <div class="juego" id="xjuego"></div>
+    <div class="ok">😏</div>
+    <p class="lead" style="margin-top:8px">En este juego no votas: te sabes las respuestas.</p>
+    <p class="center"><small>Disfruta viendo sufrir al resto.</small></p>
+  </div>
+  <div class="who">Votas como <b class="me"></b></div>
+</section>
+
 <div id="modal"><div class="box">
-  <div><small>Vas a votar a</small></div>
+  <div><small>Vas a votar</small></div>
   <div class="big" id="mname"></div>
-  <div><small id="mfase"></small></div>
+  <div><small id="mnote"></small></div>
   <button class="btn btn-gold" id="mok">Confirmar voto</button>
   <button class="btn btn-ghost" id="mno">Mejor no</button>
 </div></div>
@@ -105,9 +142,9 @@ small{color:var(--muted)}
 /* ===== Configuración ===== */
 const SUPABASE_URL = 'https://bbhkvamukmczavzmpeqj.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_QtK-sB_LJVeI6lbNLJKjvg_IqXqZDr8';
-const VOTANTES   = ['Alberto','Alvaro','Baro','Chicho','Javier Bares','Jj','Juanan','Lola','Luin','Luis','Mora','Paco','Paulino','Semari','Trifon'];
-const CANDIDATOS = [...VOTANTES, 'Friwy'].sort((a,b)=>a.localeCompare(b,'es'));
-const POLL_MS = 2000;
+const VOTANTES = ['Alvaro','Baro','Chicho','Friwy','Javier Bares','Jj','Juanan','Lola','Luin','Mora','Paco','Paulino','Semari','Trifon'];
+const POLL_MS = 1500;
+const LETRAS = ['A','B','C','D','E','F'];
 
 /* ===== API ===== */
 async function rpc(fn, args={}){
@@ -118,82 +155,193 @@ async function rpc(fn, args={}){
   return r.json();
 }
 
-/* ===== Estado local ===== */
+/* ===== Utilidades ===== */
 const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad2 = n => String(n).padStart(2,'0');
+function fmtTiempo(seg){
+  seg = Math.round(+seg); const h = Math.floor(seg/3600), m = Math.floor(seg%3600/60), s = seg%60;
+  return `${h} h ${pad2(m)} min ${pad2(s)} s`;
+}
+function textoRespuesta(st, r){
+  if (st.tipo_voto === 'opcion') return `${LETRAS[r-1]} · ${st.opciones[r-1] ?? ''}`;
+  if (st.tipo_voto === 'tiempo') return fmtTiempo(r);
+  return r;
+}
+const clave = s => (s && s.juego && s.ronda != null) ? `${s.juego}:${s.ronda}` : null;
+
+/* ===== Estado local ===== */
 const LS = 'gala_lamentable_votante';
 let yo = null; try { yo = localStorage.getItem(LS); } catch(e){}
 if (!VOTANTES.includes(yo)) yo = null;
-let actual = { expediente:null, fase:0, abierta:false };
-const votadoEn = new Set();     // expedientes en los que ya consta mi voto
+let st = { juego:null, ronda:null, opciones:[], excluidos:[], abierta:false };
+let deadline = null;            // performance.now() en el que se acaba el tiempo
+const votados = new Map();      // clave -> texto de mi respuesta (null si no se sabe)
+const comprobado = new Set();   // claves en las que ya se preguntó al servidor
+let montado = null;             // clave cuyas respuestas están pintadas
 let pendiente = null, enviando = false;
 
 function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===id)); }
 function pintarYo(){ document.querySelectorAll('.me').forEach(e=>e.textContent = yo || ''); }
+const restanteLocal = () => deadline == null ? null : Math.max(0, (deadline - performance.now())/1000);
+const abiertaAhora = () => st.abierta && (deadline == null || restanteLocal() > 0);
 
 /* ===== ¿Quién eres? ===== */
-$('voters').innerHTML = VOTANTES.map(n=>`<button class="name" data-n="${n}">${n}</button>`).join('');
+$('voters').innerHTML = VOTANTES.map(n=>`<button class="name" data-n="${esc(n)}">${esc(n)}</button>`).join('');
 $('voters').onclick = e => {
   const b = e.target.closest('[data-n]'); if (!b) return;
   if (!confirm(`¿Seguro que eres ${b.dataset.n}?`)) return;
   yo = b.dataset.n; try { localStorage.setItem(LS, yo); } catch(e){}
+  votados.clear(); comprobado.clear();
   pintarYo(); refrescar();
 };
 document.querySelectorAll('.change').forEach(b=>b.onclick=()=>{
   if (!confirm('¿Cambiar de nombre? Solo si te has equivocado al elegir.')) return;
   yo = null; try { localStorage.removeItem(LS); } catch(e){}
+  votados.clear(); comprobado.clear();
   show('s-who');
 });
 
-/* ===== Votar ===== */
-$('cands').innerHTML = CANDIDATOS.map(n=>`<button class="name" data-n="${n}">${n}</button>`).join('');
-$('cands').onclick = e => {
-  const b = e.target.closest('[data-n]'); if (!b || enviando) return;
-  pendiente = b.dataset.n;
-  $('mname').textContent = pendiente;
-  $('mfase').textContent = actual.fase ? 'Con el roast ya desvelado: +1 si aciertas, −1 si fallas' : 'Solo con la ficha: +3 si aciertas, −1 si fallas';
-  $('modal').classList.add('on');
+/* ===== Respuestas según el tipo de juego ===== */
+function montarRespuestas(){
+  const a = $('answers');
+  if (st.tipo_voto === 'opcion'){
+    a.className = 'opts';
+    a.innerHTML = st.opciones.map((o,i)=>
+      `<button class="opt o${i}" data-r="${i+1}"><span class="l">${LETRAS[i]}</span><span>${esc(o)}</span></button>`).join('');
+  } else if (st.tipo_voto === 'tiempo'){
+    a.className = '';
+    a.innerHTML = `<div class="tbox">
+        <label><input id="th" type="number" inputmode="numeric" min="0" max="999" placeholder="0">horas</label>
+        <label><input id="tm" type="number" inputmode="numeric" min="0" max="59" placeholder="00">minutos</label>
+        <label><input id="ts" type="number" inputmode="numeric" min="0" max="59" placeholder="00">segundos</label>
+      </div>
+      <button class="btn btn-gold" id="tgo">Votar este tiempo</button>`;
+    $('tgo').onclick = votarTiempo;
+    a.oninput = () => { $('err').textContent = ''; };
+  } else {
+    a.className = 'grid';
+    const ns = [...st.opciones].sort((x,y)=>x.localeCompare(y,'es'));
+    a.innerHTML = ns.map(n=>`<button class="name" data-r="${esc(n)}">${esc(n)}</button>`).join('');
+  }
+}
+$('answers').onclick = e => {
+  const b = e.target.closest('[data-r]'); if (!b || enviando) return;
+  pedirConfirmacion(b.dataset.r);
 };
+function votarTiempo(){
+  const v = id => { const x = $(id).value.trim(); return x === '' ? 0 : Number(x); };
+  const h = v('th'), m = v('tm'), s = v('ts');
+  if (![h,m,s].every(n => Number.isInteger(n) && n >= 0)) { $('err').textContent = 'Solo números enteros, sin decimales.'; return; }
+  if (m > 59 || s > 59) { $('err').textContent = 'Minutos y segundos van de 0 a 59.'; return; }
+  const total = h*3600 + m*60 + s;
+  if (total <= 0) { $('err').textContent = 'Pon algún tiempo, alma de cántaro.'; return; }
+  $('err').textContent = '';
+  pedirConfirmacion(String(total));
+}
+function pedirConfirmacion(r){
+  pendiente = { juego: st.juego, ronda: st.ronda, respuesta: r, texto: textoRespuesta(st, r) };
+  $('mname').textContent = pendiente.texto;
+  $('mnote').textContent = st.juego === 'perfil'
+    ? (st.fase ? 'Con el roast ya desvelado: +1 si aciertas, −1 si fallas' : 'Solo con la ficha: +3 si aciertas, −1 si fallas')
+    : 'No se puede cambiar una vez enviado';
+  $('modal').classList.add('on');
+}
 $('mno').onclick = () => { $('modal').classList.remove('on'); pendiente = null; };
 $('mok').onclick = async () => {
   if (!pendiente || enviando) return;
   enviando = true; $('mok').disabled = true; $('err').textContent = '';
-  const exp = actual.expediente;
+  const p = pendiente, k = `${p.juego}:${p.ronda}`;
   try {
-    const res = await rpc('gala_votar', { p_votante: yo, p_votado: pendiente, p_expediente: exp });
-    if (res === 'ok' || res === 'ya_votado'){ votadoEn.add(exp); $('modal').classList.remove('on'); pintar(); }
-    else if (res === 'cerrada'){ $('modal').classList.remove('on'); $('err').textContent = 'La votación de este expediente ya está cerrada.'; await refrescar(); }
-    else { $('modal').classList.remove('on'); $('err').textContent = 'No se ha podido votar ('+res+').'; }
+    const res = await rpc('gala_votar', { p_votante: yo, p_juego: p.juego, p_ronda: p.ronda, p_respuesta: p.respuesta });
+    $('modal').classList.remove('on');
+    if (res === 'ok'){ votados.set(k, p.texto); }
+    else if (res === 'ya_votado'){ if (!votados.has(k)) votados.set(k, null); }
+    else if (res === 'cerrada'){ $('err').textContent = 'Demasiado tarde: la votación ya está cerrada.'; await refrescar(); }
+    else if (res === 'excluido'){ await refrescar(); }
+    else { $('err').textContent = 'No se ha podido votar ('+res+').'; }
   } catch(err){
     $('modal').classList.remove('on'); $('err').textContent = 'Sin conexión. Inténtalo de nuevo.';
-  } finally { enviando = false; $('mok').disabled = false; pendiente = null; }
+  } finally { enviando = false; $('mok').disabled = false; pendiente = null; pintar(); }
 };
 
-/* ===== Bucle ===== */
+/* ===== Pintar ===== */
+function etiquetaRonda(){
+  if (st.juego === 'perfil') return `Expediente nº ${pad2(st.ronda)}`;
+  if (st.tipo_voto === 'opcion') return `Pregunta ${st.ronda}`;
+  return '';
+}
+function esperar(juego, html){
+  $('waitjuego').textContent = juego || '';
+  $('waitmsg').innerHTML = html;
+  show('s-wait');
+}
 function pintar(){
   pintarYo();
   if (!yo){ show('s-who'); return; }
-  const e = actual.expediente;
-  if (!e){ $('waitmsg').innerHTML = 'Esperando a que salga el próximo expediente<span class="dots"></span>'; show('s-wait'); return; }
-  if (votadoEn.has(e)){ $('doneexp').textContent = String(e).padStart(2,'0'); show('s-done'); return; }
-  if (!actual.abierta){ $('waitmsg').innerHTML = `Votación del expediente nº ${String(e).padStart(2,'0')} cerrada.<br>Mira la tele<span class="dots"></span>`; show('s-wait'); return; }
-  $('expnum').textContent = String(e).padStart(2,'0');
-  const fb = $('fasebadge');
-  fb.className = 'badge ' + (actual.fase ? 'b1' : 'b0');
-  fb.textContent = actual.fase ? '🔥 Roast desvelado · acierto +1' : '📁 Solo ficha · acierto +3';
-  if (!$('s-vote').classList.contains('on')) $('err').textContent = '';
+  const k = clave(st);
+  if (!k){ esperar('', 'Esperando a que empiece la siguiente votación<span class="dots"></span>'); return; }
+  if ((st.excluidos || []).includes(yo)){ $('xjuego').textContent = st.nombre || ''; show('s-excl'); return; }
+  if (votados.has(k)){
+    $('djuego').textContent = [st.nombre, etiquetaRonda()].filter(Boolean).join(' · ');
+    $('mine').textContent = votados.get(k) || '';
+    show('s-done'); return;
+  }
+  if (!abiertaAhora()){
+    esperar(st.nombre, `${etiquetaRonda() ? esc(etiquetaRonda()) + ': v' : 'V'}otación cerrada.<br>Mira la tele<span class="dots"></span>`);
+    return;
+  }
+  $('vjuego').textContent = st.nombre || '';
+  $('rlabel').textContent = etiquetaRonda();
+  $('preg').textContent = st.pregunta || '';
+  const b = $('badge');
+  if (st.juego === 'perfil'){ b.style.display = ''; b.className = 'badge ' + (st.fase ? 'b1' : 'b0');
+    b.textContent = st.fase ? '🔥 Roast desvelado · acierto +1' : '📁 Solo ficha · acierto +3'; }
+  else if (st.tipo_voto === 'tiempo'){ b.style.display = ''; b.className = 'badge b0'; b.textContent = '⏱ Un solo intento'; }
+  else b.style.display = 'none';
+  if (montado !== k){ montarRespuestas(); montado = k; $('err').textContent = ''; }
   show('s-vote');
 }
+
+/* ===== Cuenta atrás (barra) ===== */
+let estabaAbierta = false;
+function tick(){
+  const r = restanteLocal();
+  const t = $('timer');
+  if (r == null || !st.duracion){ t.classList.remove('on'); }
+  else {
+    t.classList.add('on');
+    $('tfill').style.width = Math.min(100, r / st.duracion * 100) + '%';
+    $('tnum').textContent = Math.ceil(r);
+    t.classList.toggle('low', r <= 3);
+  }
+  const ab = abiertaAhora();
+  if (estabaAbierta && !ab && !$('modal').classList.contains('on')) pintar();   // se acabó el tiempo
+  estabaAbierta = ab;
+  requestAnimationFrame(tick);
+}
+
+/* ===== Bucle ===== */
 async function refrescar(){
   try {
-    const [st] = await rpc('gala_estado');
-    actual = st || { expediente:null, fase:0, abierta:false };
-    if (yo && actual.expediente && !votadoEn.has(actual.expediente)){
-      if (await rpc('gala_he_votado', { p_votante: yo, p_expediente: actual.expediente })) votadoEn.add(actual.expediente);
+    const [s] = await rpc('gala_estado');
+    const nuevo = s || {};
+    nuevo.opciones = nuevo.opciones || []; nuevo.excluidos = nuevo.excluidos || [];
+    if (nuevo.restante != null){
+      const d = performance.now() + Number(nuevo.restante) * 1000;
+      if (deadline == null || clave(nuevo) !== clave(st) || Math.abs(d - deadline) > 400) deadline = d;
+    } else deadline = null;
+    if (clave(nuevo) !== clave(st)) montado = null;
+    st = nuevo;
+    const k = clave(st);
+    if (yo && k && !votados.has(k) && !comprobado.has(k)){
+      if (await rpc('gala_he_votado', { p_votante: yo, p_juego: st.juego, p_ronda: st.ronda })) votados.set(k, null);
+      comprobado.add(k);
     }
   } catch(e){ /* sin conexión: se reintenta en el siguiente ciclo */ }
-  pintar();
+  if (!$('modal').classList.contains('on')) pintar();
 }
-pintar(); refrescar();
+pintar(); refrescar(); requestAnimationFrame(tick);
 setInterval(()=>{ if (!enviando && !$('modal').classList.contains('on')) refrescar(); }, POLL_MS);
 document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) refrescar(); });
 </script>
