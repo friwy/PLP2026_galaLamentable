@@ -193,7 +193,7 @@ $('voters').onclick = e => {
   if (!confirm(`¿Seguro que eres ${b.dataset.n}?`)) return;
   yo = b.dataset.n; try { localStorage.setItem(LS, yo); } catch(e){}
   votados.clear(); comprobado.clear();
-  pintarYo(); refrescar();
+  pintarYo(); refrescar(); conectar();
 };
 document.querySelectorAll('.change').forEach(b=>b.onclick=()=>{
   if (!confirm('¿Cambiar de nombre? Solo si te has equivocado al elegir.')) return;
@@ -341,9 +341,14 @@ async function refrescar(){
   } catch(e){ /* sin conexión: se reintenta en el siguiente ciclo */ }
   if (!$('modal').classList.contains('on')) pintar();
 }
-pintar(); refrescar(); requestAnimationFrame(tick);
+/* ===== «Estoy aquí»: aparece en la lista de conectados de la tele ===== */
+const LATIDO_MS = 20000;
+async function conectar(){ if (!yo) return; try { await rpc('gala_conectar', { p_votante: yo }); } catch(e){} }
+setInterval(()=>{ if (!document.hidden) conectar(); }, LATIDO_MS);
+
+pintar(); refrescar(); conectar(); requestAnimationFrame(tick);
 setInterval(()=>{ if (!enviando && !$('modal').classList.contains('on')) refrescar(); }, POLL_MS);
-document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) refrescar(); });
+document.addEventListener('visibilitychange', ()=>{ if (!document.hidden){ refrescar(); conectar(); } });
 </script>
 </body>
 </html>
