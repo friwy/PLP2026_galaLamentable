@@ -32,6 +32,9 @@ button{cursor:pointer;border:0}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .name{background:#2a2032;color:var(--ink);border:1px solid #ffffff22;border-radius:12px;padding:16px 8px;font-weight:600;font-size:17px;min-height:56px}
 .name:active,.opt:active{transform:scale(.97)}
+.name.ocu{opacity:.35}
+.name.ocu::after{content:' · ocupado';font-size:12px;font-weight:400;text-decoration:none;display:block}
+.aviso{background:#b3262e33;border:1px solid #e0434c88;color:#ffb3b8;border-radius:12px;padding:10px 12px;margin:0 0 12px;text-align:center;font-size:15px;line-height:1.35}
 .opts{display:grid;gap:10px}
 .opt{display:flex;align-items:center;gap:14px;text-align:left;background:#2a2032;color:var(--ink);border:2px solid var(--c);border-radius:14px;padding:12px 14px;min-height:64px;font-weight:700;font-size:19px}
 .opt .l{flex:0 0 42px;height:42px;border-radius:10px;background:var(--c);color:#1a1008;font-family:var(--display);font-size:30px;display:flex;align-items:center;justify-content:center}
@@ -79,6 +82,7 @@ small{color:var(--muted)}
 <section class="screen" id="s-who">
   <div class="box">
     <p class="lead">¿Quién eres?</p>
+    <div class="aviso" id="whoerr" style="display:none"></div>
     <div class="grid" id="voters"></div>
     <p class="center" style="margin:14px 0 0"><small>Solo se elige una vez. Tus votos irán firmados con este nombre en todos los juegos.</small></p>
   </div>
@@ -174,6 +178,13 @@ const clave = s => (s && s.juego && s.ronda != null) ? `${s.juego}:${s.ronda}` :
 const LS = 'gala_lamentable_votante';
 let yo = null; try { yo = localStorage.getItem(LS); } catch(e){}
 if (!VOTANTES.includes(yo)) yo = null;
+// Huella de este móvil: un nombre solo puede estar en un móvil a la vez
+const LSD = 'gala_dispositivo';
+let DISP = null; try { DISP = localStorage.getItem(LSD); } catch(e){}
+if (!DISP || DISP.length < 8){
+  DISP = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'm-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+  try { localStorage.setItem(LSD, DISP); } catch(e){}
+}
 let st = { juego:null, ronda:null, opciones:[], excluidos:[], abierta:false };
 let deadline = null;            // performance.now() en el que se acaba el tiempo
 const votados = new Map();      // clave -> texto de mi respuesta (null si no se sabe)
@@ -188,18 +199,40 @@ const abiertaAhora = () => st.abierta && (deadline == null || restanteLocal() > 
 
 /* ===== ¿Quién eres? ===== */
 $('voters').innerHTML = VOTANTES.map(n=>`<button class="name" data-n="${esc(n)}">${esc(n)}</button>`).join('');
-$('voters').onclick = e => {
-  const b = e.target.closest('[data-n]'); if (!b) return;
-  if (!confirm(`¿Seguro que eres ${b.dataset.n}?`)) return;
-  yo = b.dataset.n; try { localStorage.setItem(LS, yo); } catch(e){}
-  votados.clear(); comprobado.clear();
-  pintarYo(); refrescar(); conectar();
-};
-document.querySelectorAll('.change').forEach(b=>b.onclick=()=>{
-  if (!confirm('¿Cambiar de nombre? Solo si te has equivocado al elegir.')) return;
+function avisoWho(msg){ const a = $('whoerr'); a.textContent = msg || ''; a.style.display = msg ? '' : 'none'; }
+async function marcarOcupados(){
+  try {
+    const lista = await rpc('gala_conectados');
+    const ocu = new Set((lista || []).map(x => x.nombre));
+    document.querySelectorAll('#voters [data-n]').forEach(b => b.classList.toggle('ocu', ocu.has(b.dataset.n) && b.dataset.n !== yo));
+  } catch(e){}
+}
+function perderNombre(msg){
   yo = null; try { localStorage.removeItem(LS); } catch(e){}
-  votados.clear(); comprobado.clear();
-  show('s-who');
+  votados.clear(); comprobado.clear(); avisoWho(msg); show('s-who'); marcarOcupados();
+}
+let eligiendo = false;
+$('voters').onclick = async e => {
+  const b = e.target.closest('[data-n]'); if (!b || eligiendo) return;
+  const n = b.dataset.n;
+  if (b.classList.contains('ocu')){ avisoWho(`${n} ya está en otro móvil. Si de verdad eres tú, avisa al presentador para que lo libere.`); return; }
+  if (!confirm(`¿Seguro que eres ${n}?`)) return;
+  eligiendo = true; avisoWho('');
+  try {
+    const r = await rpc('gala_conectar', { p_votante: n, p_dispositivo: DISP });
+    if (r === 'ok'){
+      yo = n; try { localStorage.setItem(LS, yo); } catch(e){}
+      votados.clear(); comprobado.clear(); pintarYo(); refrescar();
+    } else if (r === 'ocupado'){ avisoWho(`${n} ya está en otro móvil. Si de verdad eres tú, avisa al presentador para que lo libere.`); marcarOcupados(); }
+    else avisoWho('No se ha podido elegir el nombre (' + r + ').');
+  } catch(err){ avisoWho('Sin conexión. Inténtalo de nuevo.'); }
+  finally { eligiendo = false; }
+};
+document.querySelectorAll('.change').forEach(b=>b.onclick=async ()=>{
+  if (!confirm('¿Cambiar de nombre? Solo si te has equivocado al elegir. Tu nombre quedará libre para otro móvil.')) return;
+  const viejo = yo;
+  try { await rpc('gala_soltar', { p_votante: viejo, p_dispositivo: DISP }); } catch(e){}
+  perderNombre('');
 });
 
 /* ===== Respuestas según el tipo de juego ===== */
@@ -253,12 +286,13 @@ $('mok').onclick = async () => {
   enviando = true; $('mok').disabled = true; $('err').textContent = '';
   const p = pendiente, k = `${p.juego}:${p.ronda}`;
   try {
-    const res = await rpc('gala_votar', { p_votante: yo, p_juego: p.juego, p_ronda: p.ronda, p_respuesta: p.respuesta });
+    const res = await rpc('gala_votar', { p_votante: yo, p_juego: p.juego, p_ronda: p.ronda, p_respuesta: p.respuesta, p_dispositivo: DISP });
     $('modal').classList.remove('on');
     if (res === 'ok'){ votados.set(k, p.texto); }
     else if (res === 'ya_votado'){ if (!votados.has(k)) votados.set(k, null); }
     else if (res === 'cerrada'){ $('err').textContent = 'Demasiado tarde: la votación ya está cerrada.'; await refrescar(); }
     else if (res === 'excluido'){ await refrescar(); }
+    else if (res === 'ocupado'){ perderNombre('Tu nombre está ahora en otro móvil. Elige de nuevo o avisa al presentador.'); }
     else { $('err').textContent = 'No se ha podido votar ('+res+').'; }
   } catch(err){
     $('modal').classList.remove('on'); $('err').textContent = 'Sin conexión. Inténtalo de nuevo.';
@@ -344,10 +378,17 @@ async function refrescar(){
     }
   } catch(e){ /* sin conexión: se reintenta en el siguiente ciclo */ }
   if (!$('modal').classList.contains('on')) pintar();
+  if (!yo) marcarOcupados();          // en «¿Quién eres?», tachar los nombres que ya tiene otro móvil
 }
 /* ===== «Estoy aquí»: aparece en la lista de conectados de la tele ===== */
 const LATIDO_MS = 20000;
-async function conectar(){ if (!yo) return; try { await rpc('gala_conectar', { p_votante: yo }); } catch(e){} }
+async function conectar(){
+  if (!yo) return;
+  try {
+    const r = await rpc('gala_conectar', { p_votante: yo, p_dispositivo: DISP });
+    if (r === 'ocupado') perderNombre('Tu nombre está ahora en otro móvil. Elige de nuevo o avisa al presentador.');
+  } catch(e){}
+}
 setInterval(()=>{ if (!document.hidden) conectar(); }, LATIDO_MS);
 
 pintar(); refrescar(); conectar(); requestAnimationFrame(tick);
