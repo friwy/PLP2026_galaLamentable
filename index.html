@@ -183,10 +183,12 @@ function fmtTiempo(seg){
   seg = Math.round(+seg); const h = Math.floor(seg/3600), m = Math.floor(seg%3600/60), s = seg%60;
   return `${h} h ${pad2(m)} min ${pad2(s)} s`;
 }
+const esOrden = t => t === 'orden' || t === 'podio';             // podio = solo 1º y 2º
+const cuantos = () => st.tipo_voto === 'podio' ? 2 : (st.opciones || []).length;
 function textoRespuesta(st, r){
   if (st.tipo_voto === 'opcion') return `${LETRAS[r-1]} · ${st.opciones[r-1] ?? ''}`;
   if (st.tipo_voto === 'tiempo') return fmtTiempo(r);
-  if (st.tipo_voto === 'orden') return String(r).split(',').map((n,i)=>`${i+1}º ${n}`).join(' · ');
+  if (esOrden(st.tipo_voto)) return String(r).split(',').map((n,i)=>`${i+1}º ${n}`).join(' · ');
   return r;
 }
 const clave = s => (s && s.juego && s.ronda != null) ? `${s.juego}:${s.ronda}` : null;
@@ -269,15 +271,16 @@ function montarRespuestas(){
       <button class="btn btn-gold" id="tgo">Votar este tiempo</button>`;
     $('tgo').onclick = votarTiempo;
     a.oninput = () => { $('err').textContent = ''; };
-  } else if (st.tipo_voto === 'orden'){
+  } else if (esOrden(st.tipo_voto)){
     ordenSel = [];
     a.className = '';
-    a.innerHTML = `<div class="ord-ayuda">Toca en orden: primero al que pones <b>1º</b> (el que más se lo merece)</div>
+    const podio = st.tipo_voto === 'podio';
+    a.innerHTML = `<div class="ord-ayuda">${podio ? 'Toca a tu <b>1º</b> (el que más se lo merece) y luego a tu <b>2º</b>' : 'Toca en orden: primero al que pones <b>1º</b> (el que más se lo merece)'}</div>
       <div class="ord-grid">${st.opciones.map(n=>`<button class="ord-n" data-o="${esc(n)}"><span class="num"></span>${esc(n)}</button>`).join('')}</div>
       <div class="ord-lista" id="ordLista"></div>
-      <div class="ord-btns"><button class="btn btn-ghost" id="ordReset">Empezar de nuevo</button><button class="btn btn-gold" id="ordOk" disabled>Enviar mi orden</button></div>`;
+      <div class="ord-btns"><button class="btn btn-ghost" id="ordReset">Empezar de nuevo</button><button class="btn btn-gold" id="ordOk" disabled>${podio ? 'Enviar mi voto' : 'Enviar mi orden'}</button></div>`;
     $('ordReset').onclick = () => { ordenSel = []; pintarOrden(); };
-    $('ordOk').onclick = () => { if (ordenSel.length === st.opciones.length) pedirConfirmacion(ordenSel.join(',')); };
+    $('ordOk').onclick = () => { if (ordenSel.length === cuantos()) pedirConfirmacion(ordenSel.join(',')); };
     pintarOrden();
   } else {
     a.className = 'grid';
@@ -293,18 +296,18 @@ function pintarOrden(){
     b.classList.toggle('sel', i >= 0); b.querySelector('.num').textContent = i >= 0 ? (i+1) + 'º' : '';
   });
   const l = $('ordLista');
-  if (l) l.innerHTML = ops.map((_, i) => `<div class="${ordenSel[i] ? 'on' : ''}"><b>${i+1}º</b>${ordenSel[i] ? esc(ordenSel[i]) : '—'}</div>`).join('');
-  const ok = $('ordOk'); if (ok) ok.disabled = ordenSel.length !== ops.length;
+  if (l) l.innerHTML = ops.slice(0, cuantos()).map((_, i) => `<div class="${ordenSel[i] ? 'on' : ''}"><b>${i+1}º</b>${ordenSel[i] ? esc(ordenSel[i]) : '—'}</div>`).join('');
+  const ok = $('ordOk'); if (ok) ok.disabled = ordenSel.length !== cuantos();
 }
 $('answers').onclick = e => {
   if (enviando) return;
   const o = e.target.closest('[data-o]');
   if (o){
     const n = o.dataset.o, ops = st.opciones || [];
-    if (ordenSel.includes(n)) return;                         // ya puesto: para cambiar, «Empezar de nuevo»
+    if (ordenSel.includes(n) || ordenSel.length >= cuantos()) return;   // para cambiar, «Empezar de nuevo»
     ordenSel.push(n);
     const quedan = ops.filter(x => !ordenSel.includes(x));
-    if (quedan.length === 1) ordenSel.push(quedan[0]);        // el último va solo
+    if (st.tipo_voto === 'orden' && quedan.length === 1) ordenSel.push(quedan[0]);   // el último va solo
     pintarOrden(); return;
   }
   const b = e.target.closest('[data-r]'); if (!b) return;
@@ -322,7 +325,7 @@ function votarTiempo(){
 }
 function pedirConfirmacion(r){
   pendiente = { juego: st.juego, ronda: st.ronda, respuesta: r, texto: textoRespuesta(st, r) };
-  if (st.tipo_voto === 'orden'){
+  if (esOrden(st.tipo_voto)){
     $('mname').innerHTML = String(r).split(',').map((n,i)=>`<div style="font-size:${i ? 30 : 40}px">${i+1}º ${esc(n)}</div>`).join('');
   } else $('mname').textContent = pendiente.texto;
   $('mnote').textContent = st.juego === 'perfil'
@@ -369,8 +372,8 @@ function pintar(){
   if (votados.has(k)){
     $('djuego').textContent = [st.nombre, etiquetaRonda()].filter(Boolean).join(' · ');
     const mi = votados.get(k) || '';
-    $('mine').classList.toggle('orden', st.tipo_voto === 'orden');
-    if (st.tipo_voto === 'orden' && mi) $('mine').innerHTML = mi.split(' · ').map(esc).join('<br>'); else $('mine').textContent = mi;
+    $('mine').classList.toggle('orden', esOrden(st.tipo_voto));
+    if (esOrden(st.tipo_voto) && mi) $('mine').innerHTML = mi.split(' · ').map(esc).join('<br>'); else $('mine').textContent = mi;
     show('s-done'); return;
   }
   if (!abiertaAhora()){
@@ -384,7 +387,7 @@ function pintar(){
   if (st.juego === 'perfil'){ b.style.display = ''; b.className = 'badge ' + (st.fase ? 'b1' : 'b0');
     b.textContent = st.fase ? '🔥 Roast desvelado · acierto +1' : '📁 Solo ficha · acierto +3'; }
   else if (st.tipo_voto === 'tiempo'){ b.style.display = ''; b.className = 'badge b0'; b.textContent = '⏱ Un solo intento'; }
-  else if (st.tipo_voto === 'orden'){ b.style.display = ''; b.className = 'badge b0'; b.textContent = '🏆 Sin prisa: no hay tiempo límite'; }
+  else if (esOrden(st.tipo_voto)){ b.style.display = ''; b.className = 'badge b0'; b.textContent = '🏆 Sin prisa: no hay tiempo límite'; }
   else b.style.display = 'none';
   if (montado !== k){ montarRespuestas(); montado = k; $('err').textContent = ''; }
   show('s-vote');
