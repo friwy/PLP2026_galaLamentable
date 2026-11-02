@@ -61,6 +61,22 @@ button{cursor:pointer;border:0}
 @keyframes d{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
 .ok{font-size:72px;text-align:center;margin:10px 0 0}
 .mine{font-family:var(--display);font-size:40px;color:var(--gold2);text-align:center;margin:4px 0 8px;line-height:1}
+.mine.orden{font-size:28px;line-height:1.25}
+.ord-ayuda{text-align:center;color:var(--muted);font-size:15px;margin:-6px 0 12px}
+.ord-ayuda b{color:var(--gold2)}
+.ord-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ord-n{position:relative;background:#2a2032;color:var(--ink);border:2px solid #ffffff22;border-radius:14px;padding:18px 8px;font-weight:800;font-size:20px;min-height:72px}
+.ord-n .num{position:absolute;top:-10px;right:-8px;width:36px;height:36px;border-radius:50%;display:none;place-items:center;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));color:#2b1a05;font-family:var(--display);font-size:22px;box-shadow:0 2px 8px #0008}
+.ord-n.sel{border-color:var(--gold);opacity:.55}
+.ord-n.sel .num{display:grid}
+.ord-lista{margin:14px 0 4px;display:grid;gap:6px}
+.ord-lista div{display:flex;align-items:center;gap:12px;background:#ffffff08;border:1px dashed #ffffff22;border-radius:10px;padding:8px 12px;color:#ffffff40;font-weight:700;font-size:17px}
+.ord-lista div b{font-family:var(--display);font-size:24px;width:2.2ch;color:#ffffff40}
+.ord-lista div.on{background:#2e2312;border:1px solid #e8b44a88;color:var(--ink)}
+.ord-lista div.on b{color:var(--gold2)}
+.ord-btns{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.ord-btns .btn{margin-top:8px}
 .who{font-size:15px;color:var(--muted);text-align:center;margin-top:18px}
 .who button{background:none;color:var(--gold);text-decoration:underline;padding:4px}
 .btn{display:block;width:100%;border-radius:999px;padding:16px;font-weight:800;font-size:18px;margin-top:10px}
@@ -170,6 +186,7 @@ function fmtTiempo(seg){
 function textoRespuesta(st, r){
   if (st.tipo_voto === 'opcion') return `${LETRAS[r-1]} · ${st.opciones[r-1] ?? ''}`;
   if (st.tipo_voto === 'tiempo') return fmtTiempo(r);
+  if (st.tipo_voto === 'orden') return String(r).split(',').map((n,i)=>`${i+1}º ${n}`).join(' · ');
   return r;
 }
 const clave = s => (s && s.juego && s.ronda != null) ? `${s.juego}:${s.ronda}` : null;
@@ -252,14 +269,45 @@ function montarRespuestas(){
       <button class="btn btn-gold" id="tgo">Votar este tiempo</button>`;
     $('tgo').onclick = votarTiempo;
     a.oninput = () => { $('err').textContent = ''; };
+  } else if (st.tipo_voto === 'orden'){
+    ordenSel = [];
+    a.className = '';
+    a.innerHTML = `<div class="ord-ayuda">Toca en orden: primero al que pones <b>1º</b> (el que más se lo merece)</div>
+      <div class="ord-grid">${st.opciones.map(n=>`<button class="ord-n" data-o="${esc(n)}"><span class="num"></span>${esc(n)}</button>`).join('')}</div>
+      <div class="ord-lista" id="ordLista"></div>
+      <div class="ord-btns"><button class="btn btn-ghost" id="ordReset">Empezar de nuevo</button><button class="btn btn-gold" id="ordOk" disabled>Enviar mi orden</button></div>`;
+    $('ordReset').onclick = () => { ordenSel = []; pintarOrden(); };
+    $('ordOk').onclick = () => { if (ordenSel.length === st.opciones.length) pedirConfirmacion(ordenSel.join(',')); };
+    pintarOrden();
   } else {
     a.className = 'grid';
     const ns = [...st.opciones].sort((x,y)=>x.localeCompare(y,'es'));
     a.innerHTML = ns.map(n=>`<button class="name" data-r="${esc(n)}">${esc(n)}</button>`).join('');
   }
 }
+let ordenSel = [];
+function pintarOrden(){
+  const ops = st.opciones || [];
+  document.querySelectorAll('.ord-n').forEach(b => {
+    const i = ordenSel.indexOf(b.dataset.o);
+    b.classList.toggle('sel', i >= 0); b.querySelector('.num').textContent = i >= 0 ? (i+1) + 'º' : '';
+  });
+  const l = $('ordLista');
+  if (l) l.innerHTML = ops.map((_, i) => `<div class="${ordenSel[i] ? 'on' : ''}"><b>${i+1}º</b>${ordenSel[i] ? esc(ordenSel[i]) : '—'}</div>`).join('');
+  const ok = $('ordOk'); if (ok) ok.disabled = ordenSel.length !== ops.length;
+}
 $('answers').onclick = e => {
-  const b = e.target.closest('[data-r]'); if (!b || enviando) return;
+  if (enviando) return;
+  const o = e.target.closest('[data-o]');
+  if (o){
+    const n = o.dataset.o, ops = st.opciones || [];
+    if (ordenSel.includes(n)) return;                         // ya puesto: para cambiar, «Empezar de nuevo»
+    ordenSel.push(n);
+    const quedan = ops.filter(x => !ordenSel.includes(x));
+    if (quedan.length === 1) ordenSel.push(quedan[0]);        // el último va solo
+    pintarOrden(); return;
+  }
+  const b = e.target.closest('[data-r]'); if (!b) return;
   pedirConfirmacion(b.dataset.r);
 };
 function votarTiempo(){
@@ -274,7 +322,9 @@ function votarTiempo(){
 }
 function pedirConfirmacion(r){
   pendiente = { juego: st.juego, ronda: st.ronda, respuesta: r, texto: textoRespuesta(st, r) };
-  $('mname').textContent = pendiente.texto;
+  if (st.tipo_voto === 'orden'){
+    $('mname').innerHTML = String(r).split(',').map((n,i)=>`<div style="font-size:${i ? 30 : 40}px">${i+1}º ${esc(n)}</div>`).join('');
+  } else $('mname').textContent = pendiente.texto;
   $('mnote').textContent = st.juego === 'perfil'
     ? (st.fase ? 'Con el roast ya desvelado: +1 si aciertas, −1 si fallas' : 'Solo con la ficha: +3 si aciertas, −1 si fallas')
     : 'No se puede cambiar una vez enviado';
@@ -318,7 +368,9 @@ function pintar(){
   if ((st.excluidos || []).includes(yo)){ $('xjuego').textContent = st.nombre || ''; show('s-excl'); return; }
   if (votados.has(k)){
     $('djuego').textContent = [st.nombre, etiquetaRonda()].filter(Boolean).join(' · ');
-    $('mine').textContent = votados.get(k) || '';
+    const mi = votados.get(k) || '';
+    $('mine').classList.toggle('orden', st.tipo_voto === 'orden');
+    if (st.tipo_voto === 'orden' && mi) $('mine').innerHTML = mi.split(' · ').map(esc).join('<br>'); else $('mine').textContent = mi;
     show('s-done'); return;
   }
   if (!abiertaAhora()){
@@ -332,6 +384,7 @@ function pintar(){
   if (st.juego === 'perfil'){ b.style.display = ''; b.className = 'badge ' + (st.fase ? 'b1' : 'b0');
     b.textContent = st.fase ? '🔥 Roast desvelado · acierto +1' : '📁 Solo ficha · acierto +3'; }
   else if (st.tipo_voto === 'tiempo'){ b.style.display = ''; b.className = 'badge b0'; b.textContent = '⏱ Un solo intento'; }
+  else if (st.tipo_voto === 'orden'){ b.style.display = ''; b.className = 'badge b0'; b.textContent = '🏆 Sin prisa: no hay tiempo límite'; }
   else b.style.display = 'none';
   if (montado !== k){ montarRespuestas(); montado = k; $('err').textContent = ''; }
   show('s-vote');
