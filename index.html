@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Special+Elite&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<!-- Mapa del TimeGuessr (tipo de voto 'mapa') -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
 :root{--bg:#0d0b10;--ink:#f4ecdf;--muted:#b9ad9c;--gold:#e8b44a;--gold2:#ffd77a;--red:#b3262e;--plum:#241530;--card:#1c1622;
   --oA:#e8b44a;--oB:#e2512b;--oC:#5b8def;--oD:#3fb27f;
@@ -89,6 +92,19 @@ button{cursor:pointer;border:0}
 #modal .box{max-width:420px;width:100%;text-align:center}
 #modal .big{font-family:var(--display);font-size:44px;color:var(--gold2);margin:6px 0 4px;line-height:1}
 small{color:var(--muted)}
+/* TimeGuessr: mapa + año */
+.tg-ayuda{text-align:center;color:var(--muted);font-size:15px;margin:-6px 0 10px}
+.tg-ayuda b{color:var(--gold2)}
+#tgmap{position:relative;z-index:0;isolation:isolate;height:46vh;min-height:260px;border-radius:14px;border:2px solid #ffffff22;overflow:hidden;background:#cfd8dc}
+#tgmap.puesto{border-color:var(--gold)}
+.tg-pin{width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:linear-gradient(135deg,var(--gold2),var(--gold));
+  border:3px solid #2b1a05;box-shadow:0 3px 8px #0009}
+.tg-anio{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;gap:10px;margin:14px 0 4px}
+.tg-anio button{height:52px;border-radius:14px;background:#2a2032;color:var(--gold2);border:1px solid #ffffff2a;font-size:22px}
+.tg-anio .v{text-align:center;font-family:var(--display);font-size:52px;line-height:1;color:var(--gold2)}
+.tg-anio .v small{display:block;font-family:var(--type);font-size:12px;color:var(--muted);letter-spacing:1px}
+#tgrange{width:100%;accent-color:var(--gold);margin:4px 0 2px}
+.tg-esc{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;font-family:var(--type)}
 </style>
 </head>
 <body>
@@ -189,6 +205,7 @@ function textoRespuesta(st, r){
   if (st.tipo_voto === 'opcion') return `${LETRAS[r-1]} · ${st.opciones[r-1] ?? ''}`;
   if (st.tipo_voto === 'tiempo') return fmtTiempo(r);
   if (esOrden(st.tipo_voto)) return String(r).split(',').map((n,i)=>`${i+1}º ${n}`).join(' · ');
+  if (st.tipo_voto === 'mapa') return `📍 ${String(r).split(',')[2]}`;
   return r;
 }
 const clave = s => (s && s.juego && s.ronda != null) ? `${s.juego}:${s.ronda}` : null;
@@ -257,6 +274,7 @@ document.querySelectorAll('.change').forEach(b=>b.onclick=async ()=>{
 /* ===== Respuestas según el tipo de juego ===== */
 function montarRespuestas(){
   const a = $('answers');
+  if (st.tipo_voto !== 'mapa' && tgMapa){ try { tgMapa.remove(); } catch(e){} tgMapa = null; }
   if (st.tipo_voto === 'opcion'){
     a.className = 'opts';
     a.innerHTML = st.opciones.map((o,i)=>
@@ -271,6 +289,8 @@ function montarRespuestas(){
       <button class="btn btn-gold" id="tgo">Votar este tiempo</button>`;
     $('tgo').onclick = votarTiempo;
     a.oninput = () => { $('err').textContent = ''; };
+  } else if (st.tipo_voto === 'mapa'){
+    montarMapa(a);
   } else if (esOrden(st.tipo_voto)){
     ordenSel = [];
     a.className = '';
@@ -287,6 +307,42 @@ function montarRespuestas(){
     const ns = [...st.opciones].sort((x,y)=>x.localeCompare(y,'es'));
     a.innerHTML = ns.map(n=>`<button class="name" data-r="${esc(n)}">${esc(n)}</button>`).join('');
   }
+}
+/* --- TimeGuessr: toca el mapa (dónde) y elige el año (cuándo) --- */
+const TG_MIN = 2008, TG_MAX = 2026;
+let tgMapa = null, tgPin = null, tgAnio = 2017;
+function montarMapa(a){
+  if (tgMapa){ try { tgMapa.remove(); } catch(e){} tgMapa = null; }
+  tgPin = null; tgAnio = Math.round((TG_MIN + TG_MAX) / 2);
+  a.className = '';
+  a.innerHTML = `<div class="tg-ayuda">Toca el mapa donde crees que se hizo la foto (puedes moverla) y elige el <b>año</b></div>
+    <div id="tgmap"></div>
+    <div class="tg-anio"><button id="tgmenos" aria-label="Un año menos">◀</button><div class="v"><small>AÑO</small><span id="tgv"></span></div><button id="tgmas" aria-label="Un año más">▶</button></div>
+    <input type="range" id="tgrange" min="${TG_MIN}" max="${TG_MAX}" step="1">
+    <div class="tg-esc"><span>${TG_MIN}</span><span>${TG_MAX}</span></div>
+    <button class="btn btn-gold" id="tgok" disabled>📍 Pon tu chincheta en el mapa</button>`;
+  const anio = v => { tgAnio = Math.max(TG_MIN, Math.min(TG_MAX, v)); $('tgv').textContent = tgAnio; $('tgrange').value = tgAnio; };
+  anio(tgAnio);
+  $('tgmenos').onclick = () => anio(tgAnio - 1);
+  $('tgmas').onclick = () => anio(tgAnio + 1);
+  $('tgrange').oninput = e => anio(+e.target.value);
+  $('tgok').onclick = () => {
+    if (!tgPin) return;
+    const p = tgPin.getLatLng(), lng = ((p.lng + 540) % 360) - 180;
+    pedirConfirmacion(`${p.lat.toFixed(5)},${lng.toFixed(5)},${tgAnio}`);
+  };
+  if (!window.L){ $('err').textContent = 'No carga el mapa: revisa la conexión y recarga la página.'; return; }
+  tgMapa = L.map('tgmap', { zoomControl: true, attributionControl: true, worldCopyJump: true, minZoom: 2 }).setView([46, 15], 3);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    { subdomains: 'abcd', maxZoom: 18, attribution: '© OpenStreetMap · © CARTO' }).addTo(tgMapa);
+  const icono = L.divIcon({ className: '', html: '<div class="tg-pin"></div>', iconSize: [0, 0] });
+  tgMapa.on('click', e => {
+    if (tgPin) tgPin.setLatLng(e.latlng);
+    else tgPin = L.marker(e.latlng, { icon: icono, draggable: true }).addTo(tgMapa);
+    $('tgmap').classList.add('puesto');
+    const b = $('tgok'); b.disabled = false; b.textContent = 'Enviar mi respuesta';
+  });
+  setTimeout(() => { if (tgMapa) tgMapa.invalidateSize(); }, 60);
 }
 let ordenSel = [];
 function pintarOrden(){
@@ -327,6 +383,8 @@ function pedirConfirmacion(r){
   pendiente = { juego: st.juego, ronda: st.ronda, respuesta: r, texto: textoRespuesta(st, r) };
   if (esOrden(st.tipo_voto)){
     $('mname').innerHTML = String(r).split(',').map((n,i)=>`<div style="font-size:${i ? 30 : 40}px">${i+1}º ${esc(n)}</div>`).join('');
+  } else if (st.tipo_voto === 'mapa'){
+    $('mname').innerHTML = `📍 Tu chincheta<div style="font-size:56px">${esc(String(r).split(',')[2])}</div>`;
   } else $('mname').textContent = pendiente.texto;
   $('mnote').textContent = st.juego === 'perfil'
     ? (st.fase ? 'Con el roast ya desvelado: +1 si aciertas, −1 si fallas' : 'Solo con la ficha: +3 si aciertas, −1 si fallas')
@@ -356,6 +414,7 @@ $('mok').onclick = async () => {
 function etiquetaRonda(){
   if (st.juego === 'perfil') return `Expediente nº ${pad2(st.ronda)}`;
   if (st.tipo_voto === 'opcion') return `Pregunta ${st.ronda}`;
+  if (st.tipo_voto === 'mapa') return `Foto ${st.ronda}`;
   return '';
 }
 function esperar(juego, html){
@@ -388,9 +447,12 @@ function pintar(){
     b.textContent = st.fase ? '🔥 Roast desvelado · acierto +1' : '📁 Solo ficha · acierto +3'; }
   else if (st.tipo_voto === 'tiempo'){ b.style.display = ''; b.className = 'badge b0'; b.textContent = '⏱ Un solo intento'; }
   else if (esOrden(st.tipo_voto)){ b.style.display = ''; b.className = 'badge b0'; b.textContent = '🏆 Sin prisa: no hay tiempo límite'; }
+  else if (st.tipo_voto === 'mapa'){ b.style.display = ''; b.className = 'badge b0'; b.textContent = '🗺️ ¿Dónde y cuándo? Mira la foto en la tele'; }
   else b.style.display = 'none';
-  if (montado !== k){ montarRespuestas(); montado = k; $('err').textContent = ''; }
+  const nuevoMontaje = montado !== k;
+  if (nuevoMontaje){ montarRespuestas(); montado = k; $('err').textContent = ''; }
   show('s-vote');
+  if (nuevoMontaje && tgMapa) setTimeout(() => tgMapa && tgMapa.invalidateSize(), 30);
 }
 
 /* ===== Cuenta atrás (barra) ===== */
