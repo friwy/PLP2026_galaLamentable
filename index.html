@@ -199,8 +199,8 @@ function fmtTiempo(seg){
   seg = Math.round(+seg); const h = Math.floor(seg/3600), m = Math.floor(seg%3600/60), s = seg%60;
   return `${h} h ${pad2(m)} min ${pad2(s)} s`;
 }
-const esOrden = t => t === 'orden' || t === 'podio';             // podio = solo 1º y 2º
-const cuantos = () => st.tipo_voto === 'podio' ? 2 : (st.opciones || []).length;
+const esOrden = t => t === 'orden' || t === 'podio' || t === 'top3';   // podio = solo 1º y 2º · top3 = 1º, 2º y 3º
+const cuantos = () => st.tipo_voto === 'podio' ? 2 : st.tipo_voto === 'top3' ? 3 : (st.opciones || []).length;
 function textoRespuesta(st, r){
   if (st.tipo_voto === 'opcion') return `${LETRAS[r-1]} · ${st.opciones[r-1] ?? ''}`;
   if (st.tipo_voto === 'tiempo') return fmtTiempo(r);
@@ -294,8 +294,9 @@ function montarRespuestas(){
   } else if (esOrden(st.tipo_voto)){
     ordenSel = [];
     a.className = '';
-    const podio = st.tipo_voto === 'podio';
-    a.innerHTML = `<div class="ord-ayuda">${podio ? 'Toca a tu <b>1º</b> (el que más se lo merece) y luego a tu <b>2º</b>' : 'Toca en orden: primero al que pones <b>1º</b> (el que más se lo merece)'}</div>
+    const podio = st.tipo_voto === 'podio' || st.tipo_voto === 'top3', top3 = st.tipo_voto === 'top3';
+    a.innerHTML = `<div class="ord-ayuda">${top3 ? 'Toca tu <b>1º</b> (el que más te apetece), luego tu <b>2º</b> y tu <b>3º</b>'
+      : podio ? 'Toca a tu <b>1º</b> (el que más se lo merece) y luego a tu <b>2º</b>' : 'Toca en orden: primero al que pones <b>1º</b> (el que más se lo merece)'}</div>
       <div class="ord-grid">${st.opciones.map(n=>`<button class="ord-n" data-o="${esc(n)}"><span class="num"></span>${esc(n)}</button>`).join('')}</div>
       <div class="ord-lista" id="ordLista"></div>
       <div class="ord-btns"><button class="btn btn-ghost" id="ordReset">Empezar de nuevo</button><button class="btn btn-gold" id="ordOk" disabled>${podio ? 'Enviar mi voto' : 'Enviar mi orden'}</button></div>`;
