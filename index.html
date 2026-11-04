@@ -333,8 +333,12 @@ function montarMapa(a){
   };
   if (!window.L){ $('err').textContent = 'No carga el mapa: revisa la conexión y recarga la página.'; return; }
   tgMapa = L.map('tgmap', { zoomControl: true, attributionControl: true, worldCopyJump: true, minZoom: 2 }).setView([46, 15], 3);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    { subdomains: 'abcd', maxZoom: 18, attribution: '© OpenStreetMap · © CARTO' }).addTo(tgMapa);
+  // Mapa sin clave: Esri (callejero). Si falla alguna tesela, se tira de OpenStreetMap.
+  const capaMapa = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 18, attribution: 'Tiles © Esri' }).addTo(tgMapa);
+  let respaldo = false;
+  capaMapa.on('tileerror', () => { if (respaldo) return; respaldo = true;
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(tgMapa); });
   const icono = L.divIcon({ className: '', html: '<div class="tg-pin"></div>', iconSize: [0, 0] });
   tgMapa.on('click', e => {
     if (tgPin) tgPin.setLatLng(e.latlng);
